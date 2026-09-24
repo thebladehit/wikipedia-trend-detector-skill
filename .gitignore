@@ -1,0 +1,8 @@
+.idea/
+__pycache__/
+.pytest_cache/
+.venv/
+*.pyc
+**/evals/runs/
+.DS_Store
+wiki-interest/.venv/
