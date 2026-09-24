@@ -1,0 +1,1 @@
+# wikipedia-trend-detector-skill
