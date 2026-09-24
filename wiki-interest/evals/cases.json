@@ -19,7 +19,7 @@
     "expect_commands": ["wit.py run", "wit.py report"],
     "expect_files": ["report.pdf"],
     "must_include": ["vi|в'єтнам|вʼєтнам", "pdf|PDF"],
-    "must_not_include": ["готові платити", "ринок Туреччини"]
+    "must_not_include": ["готові платити", "ринк|ринок", "населен"]
   },
   {
     "id": "mercury-ambiguous",

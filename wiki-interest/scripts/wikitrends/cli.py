@@ -118,7 +118,9 @@ def cmd_report(a) -> dict:
     path = d / "report.pdf"
     info = report.make_pdf(compact, analysis, summary, title, out, path)
     return {"status": "ok", "pdf": str(path), "guard_warnings": g["warnings"], "layout": info,
-            "note": "Give the user the PDF path. If guard_warnings is not empty, re-read those sentences against the verdicts."}
+            "final_message": report.final_message(compact, summary, str(path), out),
+            "note": "Send final_message to the user exactly as is and add nothing after it "
+                    "(it already contains the next step)."}
 
 
 def cmd_resolve(a) -> dict:

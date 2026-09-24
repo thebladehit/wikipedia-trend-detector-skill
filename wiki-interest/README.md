@@ -92,7 +92,7 @@ Details and every threshold: [references/METHODOLOGY.md](references/METHODOLOGY.
 | Statistics | 28 tests (synthetic series with a known answer, guard, topic resolution on saved real responses); binomial test == scipy for n ≤ 24; threshold calibration: false "rising" ≈ 2% |
 | Data pipeline | our sums == API monthly endpoint for 3 articles in uk/cs/de (de differs exactly by the added redirects); cold cache 6 langs × 36 months: 125 requests, 26 s, no 429 |
 | PDF | rendered and inspected (Cyrillic, 1 and 5 languages, long title) |
-| Agent behaviour | `evals/run_evals.py`: Claude Code + Haiku 4.5, 10 cases incl. multi-turn follow-ups, 4 iterations; final **28/30** (~$0.05 and ~30 s per case); every failure read by hand ([RESULTS](evals/RESULTS.md)) |
+| Agent behaviour | `evals/run_evals.py`: Claude Code + Haiku 4.5, 10 cases incl. multi-turn follow-ups, 4 iterations; final 28/30, then 10/10 after `final_message` (~$0.05 and ~30 s per case); every failure read by hand ([RESULTS](evals/RESULTS.md)) |
 
 ```bash
 cd wiki-interest
@@ -107,7 +107,7 @@ uv run evals/run_evals.py --runs 3   # agent evals (needs `claude` CLI)
   "learning English" it measures the English language as a subject) — the
   agent shows it and the user can edit it.
 - Direction checks of the guard are keyword-based and only warn.
-- Haiku sometimes adds outside facts or "market" wording in the free-text message *after* the PDF (2/30 final runs); next step: `report` returns a ready final message.
+- Free text written by the model is the main risk: every place where Haiku was allowed to add its own sentence eventually produced an outside fact or "market" wording. Hence `report` returns a complete `final_message` (incl. the next step) that is sent as is.
 - Tested on Haiku 4.5 via Claude Code only; a second harness with a free OpenRouter model was not run (needs an API key).
 - Wikipedia is one signal; results are a direction for validation, not a decision.
   See [references/LIMITATIONS.md](references/LIMITATIONS.md).

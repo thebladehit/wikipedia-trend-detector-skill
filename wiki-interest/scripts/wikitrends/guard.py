@@ -21,7 +21,7 @@ BLOCK = [
     (r"\bwill\s+(?:buy|pay)\b", "claims purchase intent — pageviews do not show that"),
     (r"попит\s+на\s+ринку|market\s+demand", "claims market demand — pageviews measure interest in a language edition"),
 ]
-NEGATION = re.compile(r"\b(не|ні|not|no|doesn't|does not|don't|≠)\b", re.I)
+NEGATION = re.compile(r"\b(?:не|ні|not|no|doesn't|does not|don't)\b|≠", re.I)
 WARN_WORDS = [(r"\bринк\w*|\bmarket\w*", "say 'language edition' (мовний розділ), not 'market'"),
               (r"\bкраїн\w*|\bcountr\w*", "a language edition is not a country — check the wording")]
 

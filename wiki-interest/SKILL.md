@@ -78,8 +78,11 @@ You may paste `table_md` as is.
 
 `report` checks your summary: numbers not in the analysis or claims like
 "users will pay" → `status: rejected` and no PDF. Fix the text using `allowed`,
-and retry once. If it is rejected again, use `--summary auto`. Give the user
-the `pdf` path. If `guard_warnings` is not empty, re-read those sentences.
+and retry once. If it is rejected again, use `--summary auto`. On success,
+**send `final_message` as is** — it already has the PDF path, ranking, trust
+must_mention and the next step. Add nothing before or after it — no own
+recommendations, facts, populations, countries or "markets". If
+`guard_warnings` is not empty, re-read those sentences.
 If a warning says the language differs, run the suggested `edit --out`.
 
 ## Examples

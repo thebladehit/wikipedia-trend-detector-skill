@@ -65,6 +65,42 @@ def auto_summary(compact: dict) -> str:
     return " ".join(parts)
 
 
+FINAL = {
+    "uk": {"pdf": "PDF-звіт", "summary": "Висновок", "rank": "Рейтинг мовних розділів", "trust": "Наскільки довіряти",
+           "note": "Важливо", "limit": "Обмеження", "readers": "Звідки читають розділи",
+           "next_rank": "Наступний крок: перевірити {top} опитуванням або невеликим тестом реклами. Змінити мови, період, кошик чи ваги можна одним уточненням.",
+           "next_one": "Наступний крок: перевірити висновок іншими джерелами (опитування, тест реклами). Змінити мови, період чи кошик можна одним уточненням."},
+    "en": {"pdf": "PDF report", "summary": "Conclusion", "rank": "Ranking of language editions", "trust": "How much to trust it",
+           "note": "Important", "limit": "Limitation", "readers": "Where the editions are read from",
+           "next_rank": "Next step: validate {top} with a survey or a small ad test. Languages, period, basket or weights can be changed with one follow-up.",
+           "next_one": "Next step: validate the result with other sources (survey, ad test). Languages, period or basket can be changed with one follow-up."},
+}
+
+
+def final_message(compact: dict, summary: str, pdf_path: str, out: str) -> str:
+    """Ready message for the user after the PDF: everything comes from the
+    analysis, so the agent does not compose free text (where small models add
+    outside facts or 'market' wording)."""
+    t = FINAL[out]
+    lines = [f"**{t['pdf']}:** `{pdf_path}`", "", f"**{t['summary']}:** {summary}"]
+    if compact.get("ranking"):
+        lines += ["", f"**{t['rank']}:**"] + [f"{r['rank']}. {r['lang']} — {r['why']}" for r in compact["ranking"]]
+    lines += ["", f"**{t['trust']}:**"] + [f"- {l}: {v}" for l, v in compact.get("trust", {}).items()]
+    # confidence caveats are already in the trust lines above
+    notes = [m for m in compact.get("must_mention", []) if not m.startswith(("Довіра для", "Confidence for"))]
+    if notes:
+        lines += ["", f"**{t['note']}:**"] + [f"- {m}" for m in notes]
+    rd = (compact.get("readers") or {}).get("top_countries")
+    if rd and len(rd) > 1:
+        lines += ["", f"**{t['readers']}:** " + "; ".join(f"{l} — {v}" for l, v in rd.items())]
+    if compact.get("limitations"):
+        lines += ["", f"**{t['limit']}:** {compact['limitations'][0]}"]
+    rk = compact.get("ranking") or []
+    lines += ["", t["next_rank"].format(top=" і ".join(r["lang"] for r in rk[:2]) if out == "uk"
+                                        else " and ".join(r["lang"] for r in rk[:2])) if rk else t["next_one"]]
+    return "\n".join(lines)
+
+
 def _build(compact: dict, analysis: dict, summary: str, title: str, out: str, scale: float, drop_assumptions: bool) -> FPDF:
     t = L[out]
     S = _Safe.txt
