@@ -1,0 +1,17 @@
+# Dev environment only (tests). The CLI itself runs from the PEP 723 header
+# in scripts/wit.py: `uv run scripts/wit.py ...`
+[project]
+name = "wiki-interest-dev"
+version = "0.1.0"
+requires-python = ">=3.11"
+dependencies = ["numpy>=1.26", "matplotlib>=3.8", "fpdf2>=2.7.9"]
+
+[dependency-groups]
+dev = ["pytest>=8"]
+
+[tool.uv]
+package = false
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+pythonpath = ["scripts"]

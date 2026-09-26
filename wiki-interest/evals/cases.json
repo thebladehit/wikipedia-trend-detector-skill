@@ -1,0 +1,237 @@
+[
+  {
+    "id": "astronomy-uk-trust",
+    "turns": [
+      "Ми думаємо додати курс з астрономії до освітнього застосунку. Чи зростає інтерес до цієї теми в україномовній Wikipedia, і наскільки цьому зростанню можна довіряти?"
+    ],
+    "expect_commands": [
+      "wit.py run"
+    ],
+    "must_include": [
+      "довір|надійн",
+      "сезон|літ|вересн|червн",
+      "кошик|стат"
+    ],
+    "must_not_include": [
+      "ринок України",
+      "готові платити",
+      "інтерес зростає"
+    ]
+  },
+  {
+    "id": "fasting-pl-cs",
+    "turns": [
+      "Порівняй зростання інтересу до інтервального голодування в польськомовній та чеськомовній Wikipedia за останні два роки."
+    ],
+    "expect_commands": [
+      "wit.py run"
+    ],
+    "must_include": [
+      "pl|польськ",
+      "cs|чеськ",
+      "немає статті|не має статті|відсутн|не виміря"
+    ],
+    "must_not_include": [
+      "ринок Польщі",
+      "ринок Чехії"
+    ]
+  },
+  {
+    "id": "english-report",
+    "turns": [
+      "Ми створюємо застосунок для вивчення мов. Порівняй інтерес до вивчення англійської в українській, польській, турецькій, в'єтнамській і португальській Вікіпедії та підготуй короткий звіт у PDF: які аудиторії варто дослідити наступними й чому?"
+    ],
+    "expect_commands": [
+      "wit.py run",
+      "wit.py report"
+    ],
+    "expect_files": [
+      "report.pdf"
+    ],
+    "must_include": [
+      "vi|в'єтнам|вʼєтнам",
+      "pdf|PDF"
+    ],
+    "must_not_include": [
+      "готові платити",
+      "ринк|ринок",
+      "населен"
+    ]
+  },
+  {
+    "id": "mercury-ambiguous",
+    "turns": [
+      "Чи росте інтерес до Меркурія в українській Вікіпедії?"
+    ],
+    "expect_commands": [
+      "wit.py run"
+    ],
+    "must_include": [
+      "планет",
+      "ртут|бог|елемент"
+    ],
+    "must_not_include": [],
+    "forbid_commands": [
+      "--qid"
+    ]
+  },
+  {
+    "id": "followup-add-slovak",
+    "turns": [
+      "Порівняй інтерес до інтервального голодування в польськомовній та чеськомовній Wikipedia за останні два роки.",
+      "Додай словацьку і візьми три роки."
+    ],
+    "expect_commands": [
+      "wit.py run",
+      "wit.py edit"
+    ],
+    "expect_command_args": [
+      "sk",
+      "36"
+    ],
+    "must_include": [
+      "sk|словацьк"
+    ],
+    "must_not_include": []
+  },
+  {
+    "id": "niche-topic",
+    "turns": [
+      "Чи зростає інтерес до гравітаційно-хвильової астрономії в українській Вікіпедії?"
+    ],
+    "expect_commands": [
+      "wit.py run"
+    ],
+    "must_include": [
+      "довір"
+    ],
+    "must_not_include": [
+      "готові платити"
+    ]
+  },
+  {
+    "id": "short-period",
+    "turns": [
+      "How has interest in chess changed in Polish Wikipedia over the last 6 months?"
+    ],
+    "expect_commands": [
+      "wit.py run"
+    ],
+    "expect_command_args": [
+      "--months 6"
+    ],
+    "must_include": [
+      "pl|Polish",
+      "confidence|trust"
+    ],
+    "must_not_include": [
+      "Polish market"
+    ]
+  },
+  {
+    "id": "followup-basket-remove",
+    "turns": [
+      "Чи зростає інтерес до астрономії в українській Вікіпедії?",
+      "Прибери з кошика статтю «Галактика» і перерахуй."
+    ],
+    "expect_commands": [
+      "wit.py run",
+      "wit.py edit"
+    ],
+    "expect_command_args": [
+      "--basket-remove"
+    ],
+    "must_include": [
+      "галактик"
+    ],
+    "must_not_include": []
+  },
+  {
+    "id": "followup-weights",
+    "turns": [
+      "Порівняй інтерес до англійської мови в українській, польській і турецькій Вікіпедії. Хто найперспективніший?",
+      "Нам важливіша стабільність, ніж ріст. Перерахуй рейтинг."
+    ],
+    "expect_commands": [
+      "wit.py run",
+      "wit.py edit"
+    ],
+    "expect_command_args": [
+      "--weights"
+    ],
+    "must_include": [
+      "стабільн"
+    ],
+    "must_not_include": [
+      "ринок"
+    ]
+  },
+  {
+    "id": "english-prompt-de-fr",
+    "turns": [
+      "Is interest in chess growing in German and French Wikipedia? We are considering a chess learning app."
+    ],
+    "expect_commands": [
+      "wit.py run"
+    ],
+    "must_include": [
+      "de|German",
+      "fr|French",
+      "confidence"
+    ],
+    "must_not_include": [
+      "willing to pay",
+      "German market",
+      "French market"
+    ]
+  },
+  {
+    "id": "no-languages-ask",
+    "turns": [
+      "Ми хочемо запустити застосунок для вивчення шахів. Чи зростає інтерес до шахів?"
+    ],
+    "expect_commands": [],
+    "forbid_commands": [
+      "wit.py run"
+    ],
+    "must_include": [
+      "мов|розділ",
+      "\\?"
+    ],
+    "must_not_include": []
+  },
+  {
+    "id": "polish-user",
+    "turns": [
+      "Czy rośnie zainteresowanie szachami w polskiej Wikipedii?"
+    ],
+    "expect_commands": [
+      "wit.py run"
+    ],
+    "expect_command_args": [
+      "--out pl"
+    ],
+    "must_include": [
+      "szach",
+      "zaufan|pewno|wiarygodn"
+    ],
+    "must_not_include": [
+      "rynek"
+    ]
+  },
+  {
+    "id": "followup-list-previous",
+    "turns": [
+      "Чи зростає інтерес до астрономії в українській Вікіпедії?",
+      "Що ми вже рахували раніше? Нагадай результати."
+    ],
+    "expect_commands": [
+      "wit.py run",
+      "wit.py (list|show)"
+    ],
+    "must_include": [
+      "астроном"
+    ],
+    "must_not_include": []
+  }
+]
