@@ -134,6 +134,17 @@ the compared languages, penalty 0.15 for low and
 `--weights`; always written to `assumptions`. Scores are relative: adding a
 language can change the others' scores.
 
+Why weights and why these ones: the task says users bring their own criteria of
+"promising", so the ranking is a *default*, not a truth. 0.4 / 0.3 / 0.3 means
+"growth matters most, size and predictability equally" — a founder's usual
+first question. They are not fitted to data (there is no ground truth of
+"right" language to fit to). Safeguards: the weights are always printed in
+`assumptions`; `ranking.why` names the factor that decided each place; the
+user changes them in words ("stability matters more") → `--weights`, and a
+follow-up re-ranks from cache. Alternative considered: a Pareto front (no
+weights) — honest but often returns "all languages are incomparable", which
+does not answer "where to launch first"; listed in the roadmap as an option.
+
 ## 8. Guard for agent text
 
 `report --summary` rejects a summary with numbers that do not appear in the

@@ -1,0 +1,20 @@
+name: skill checks
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v6
+      - name: Validate Agent Skill format
+        run: uvx --from skills-ref agentskills validate wiki-interest
+      - name: Unit tests (offline, fixtures)
+        working-directory: wiki-interest
+        run: uv run --group dev pytest -q
+      - name: Skill script resolves its locked dependencies
+        working-directory: wiki-interest
+        run: uv run scripts/wit.py --help

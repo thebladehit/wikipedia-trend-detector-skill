@@ -132,5 +132,6 @@ How to take it from single questions to bigger research, in order of value:
    saved study changes direction; no LLM needed.
 7. **Backend + MCP.** Move data and heavy compute to a service; the skill
    becomes a thin client, the same tools are exposed over MCP.
-8. **Evals in CI** on every change of `SKILL.md` or thresholds; threshold
+8. **Ranking without weights** as an option: a Pareto front (trust × growth) for users who do not want to set priorities; weights stay the default because they give a single order.
+9. **Evals in CI** on every change of `SKILL.md` or thresholds; threshold
    calibration on thousands of synthetic series (false "rising" rate).
