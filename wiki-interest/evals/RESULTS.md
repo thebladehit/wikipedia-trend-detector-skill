@@ -127,22 +127,25 @@ Every failure below was read by hand — see DEVLOG.md for what each one meant a
 | english-prompt-de-fr | 1/1 | 4.0 | 101k | 24 | 0.042 | — |
 | **total** | **10/10** | 4.7 | 129k | 34 | 0.058 | |
 
-## Second harness: Claude Code via OpenRouter (free model)
+## Second harness: Claude Code via OpenRouter (free models)
 
-**Bottom line:** the skill works on a free non-Anthropic model — it is found,
-called, and every number in the answers comes from the tool — but the model
-follows the skill's rules less reliably than Haiku. Both failures below are on
-the model side; the second happened before the skill was even called.
+**Bottom line:** the full scenario works on a free non-Anthropic model.
+`nvidia/nemotron-3-ultra-550b-a55b:free` passed **3/3** — including asking the
+user about "Mercury" — with 4 agent turns per case, like Haiku. The smaller
+`nemotron-3-super-120b` passed 1/4: every number was still right (it comes
+from the tool), but it broke the rules (chose "planet" itself, skipped the
+tool, dropped seasonality). So quality depends on the model's instruction
+following, not on the skill; the code-level guards keep the numbers correct
+on every model that calls the tool.
 
 ### Setup
 
 | | |
 |---|---|
-| Model | `nvidia/nemotron-3-super-120b-a12b:free` |
-| Tried first | `qwen/qwen3.8-27b:free` — rejected with *429 rate-limited upstream* (shared free pool); Claude Code kept retrying silently |
 | Harness | Claude Code 2.1 with `ANTHROPIC_BASE_URL=https://openrouter.ai/api` |
-| Command | `uv run evals/run_evals.py --model nvidia/nemotron-3-super-120b-a12b:free --openrouter-key-file ~/.openrouter_key` |
-| Budget | free tier = 20 req/min, **50 req/day** → 4 runs in total |
+| Command | `uv run evals/run_evals.py --model <model> --openrouter-key-file ~/.openrouter_key --case …` |
+| Budget | free tier = 20 req/min, 50–100 req/day → 1 run per case |
+| Unavailable | `qwen/qwen3.8-27b:free`, `google/gemma-4-31b-it:free` — *429 rate-limited upstream* (shared free pool) on both days ([qwen transcript](transcripts/20260926-123829_qwen/)) |
 | Cost | `$` printed by the runner is Claude Code's Anthropic-price estimate; the real cost is $0 |
 
 Setup pitfall: when started from inside another Claude Code / desktop
@@ -152,27 +155,31 @@ login and ignores the OpenRouter token (`401 Missing Authentication header`).
 
 ### Results
 
-| case | result | agent turns | what happened (transcript read by hand) |
-|---|---|---|---|
-| fasting-pl-cs | ✅ PASS | 11 | correct numbers; says pl has no article and is not measured; Polish/Czech words leak into Ukrainian («głównie», «převážно») |
-| astronomy-uk-trust | ❌ FAIL | 10 | numbers and trust sentence correct; dropped the seasonality line that `must_mention` requires |
-| mercury-ambiguous | ❌ FAIL | 11 | called the skill, got `needs_input` (planet / mercury element / god), then **ran `--qid Q308` (planet) itself** without asking the user |
-| mercury-ambiguous, after the fix | ❌ FAIL | — | **did not call the skill at all**: asked the user to confirm the language they had already named, and assumed "planet" in the same message |
+| model | case | result | agent turns | what happened (transcript read by hand) |
+|---|---|---|---|---|
+| **nemotron-3-ultra-550b** | mercury-ambiguous | ✅ PASS | 4 | listed planet / element / god / … from `needs_input` and asked the user |
+| **nemotron-3-ultra-550b** | astronomy-uk-trust | ✅ PASS | 4 | verdict, trust, seasonality, basket — all from the tool |
+| **nemotron-3-ultra-550b** | fasting-pl-cs | ✅ PASS | 4 | cs −30%; says pl has no article and suggests `edit --article pl:…` |
+| nemotron-3-super-120b | fasting-pl-cs | ✅ PASS | 11 | correct numbers; Polish/Czech words leak into Ukrainian («głównie», «převážно») |
+| nemotron-3-super-120b | astronomy-uk-trust | ❌ FAIL | 10 | numbers and trust sentence correct; dropped the seasonality line that `must_mention` requires |
+| nemotron-3-super-120b | mercury-ambiguous | ❌ FAIL | 11 | got `needs_input`, then **ran `--qid Q308` (planet) itself** without asking |
+| nemotron-3-super-120b | mercury, after the fix | ❌ FAIL | — | **did not call the skill at all**; asked to confirm the language and assumed "planet" |
+
+Transcripts: [ultra](transcripts/20260926-124256_ultra/), [super](transcripts/20260926-121029_openrouter/), [super after fix](transcripts/20260926-121546_or_fix/).
 
 The fix between the two Mercury runs: every `needs_input` response now carries
 `agent_instruction` ("STOP. Ask the user… do not choose an option yourself"),
-and SKILL.md rule 4 names the Mercury example. On Haiku it holds (2/2); on
-Nemotron the second run never reached the tool, so the instruction was never seen.
+and SKILL.md rule 4 names the Mercury example. Haiku 2/2, Nemotron Ultra 1/1;
+Nemotron Super never reached the tool, so it never saw the instruction.
 
-### Why it fails on this model
+### Why the smaller model fails
 
 1. **Claude Code is built for Claude models.** Its system prompt, tool format
    and skill mechanism assume Claude; OpenRouter states that other models "may
-   not work correctly". Visible here: Nemotron called the `Skill` tool 3–4
-   times in a row and needed 10–11 turns where Haiku needs 4.
-2. **Weaker instruction following.** Nemotron is tuned to reason and finish
-   the task; it tends to complete it on its own (choose the meaning for the
-   user) instead of stopping to ask.
+   not work correctly". Visible on Super: it called the `Skill` tool 3–4 times
+   in a row and needed 10–11 turns where Haiku and Ultra need 4.
+2. **Weaker instruction following.** Super tends to finish the task on its own
+   (choose the meaning for the user) instead of stopping to ask.
 3. **Weaker Ukrainian.** Words from neighbouring languages appear in the text.
 
 What the skill can and cannot do about it: code-level guards (ready sentences,
@@ -182,18 +189,16 @@ picks an option before asking, is outside their reach.
 
 ### Compared with Haiku 4.5
 
-| | Haiku 4.5 | Nemotron (free) |
-|---|---|---|
-| Skill found and called | always | 3 of 4 runs |
-| Numbers only from tool output | ✅ | ✅ |
-| Asks on `needs_input` (Mercury) | 2/2 after the fix | 0/2 |
-| Conveys every `must_mention` item | mostly | missed seasonality |
-| Agent turns per case | ~4 | ~10–11 |
-| Language quality (uk) | good, rare typos | mixes in Polish/Czech words |
+| | Haiku 4.5 | Nemotron Ultra (free) | Nemotron Super (free) |
+|---|---|---|---|
+| Skill found and called | always | 3/3 | 3 of 4 runs |
+| Numbers only from tool output | ✅ | ✅ | ✅ |
+| Asks on `needs_input` (Mercury) | 2/2 after the fix | 1/1 | 0/2 |
+| Conveys every `must_mention` item | mostly | ✅ | missed seasonality |
+| Agent turns per case | ~4 | 4 | ~10–11 |
 
 ### Next steps
 
-- Repeat on other free models with tool support when the daily limit resets
-  (`qwen/qwen3.8-27b:free` when not rate-limited, `google/gemma-4-31b-it:free`)
-  to separate "free models in general" from "this model".
-- Run each case ×3 (needs ~$10 of credits for the 1 000 req/day tier).
+- Run each case ×3 on Ultra and on Qwen/Gemma when they are not rate-limited
+  (needs ~$10 of credits for the 1 000 req/day tier) — 1 run per case is a
+  smoke test, not a pass rate.

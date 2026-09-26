@@ -108,7 +108,7 @@ uv run evals/run_evals.py --runs 3   # agent evals (needs `claude` CLI)
   agent shows it and the user can edit it.
 - Direction checks of the guard are keyword-based and only warn.
 - Free text written by the model is the main risk: every place where Haiku was allowed to add its own sentence eventually produced an outside fact or "market" wording. Hence `report` returns a complete `final_message` (incl. the next step) that is sent as is.
-- Full scenario verified on Haiku 4.5 (10/10 eval cases). On a free OpenRouter model (Nemotron) through Claude Code the numbers stay correct, but the model follows the rules worse (e.g. picks "Mercury" itself instead of asking) — see [evals/RESULTS.md](evals/RESULTS.md).
+- Full scenario verified on Haiku 4.5 and on a free OpenRouter model (Nemotron Ultra 550B, 3/3 incl. the Mercury question); a smaller free model (Nemotron Super) keeps the numbers right but breaks rules (picks "Mercury" itself) — see [evals/RESULTS.md](evals/RESULTS.md). One run per case on free models (daily limits).
 - Wikipedia is one signal; results are a direction for validation, not a decision.
   See [references/LIMITATIONS.md](references/LIMITATIONS.md).
 

@@ -209,3 +209,7 @@ How "no functional change" was verified:
   it asked to re-confirm the language and assumed "planet" before calling the
   tool. The free model's weaker instruction following is a limitation of that
   model; the skill's code-level guard cannot help before the tool is called.
+- Second free model: Qwen and Gemma 31B were rate-limited upstream (429);
+  `nvidia/nemotron-3-ultra-550b-a55b:free` passed 3/3 (Mercury asked, 4 turns
+  per case like Haiku). Conclusion: the failures above are the smaller model's
+  instruction following, not the skill.
