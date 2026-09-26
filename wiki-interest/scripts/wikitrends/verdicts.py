@@ -172,6 +172,28 @@ def trust(m: dict, out: str) -> str:
     return T[out]["trust"].format(lvl=LEVEL_NAMES[out][c["level"]], score=c["score"], why=why)
 
 
+TABLE_HEADER = {"uk": "| мова | частка теми, рік до року | перегляди | напрям | довіра | місце |",
+                "en": "| language | topic share, YoY | views | direction | confidence | rank |"}
+
+
+def table_md(results: dict, ranking: list[dict], out: str) -> str:
+    """Markdown table the agent can paste as is; rows in ranking order."""
+    rank_of = {r["key"]: r["rank"] for r in ranking}
+    rows = [TABLE_HEADER[out], "|---|---|---|---|---|---|"]
+    for lang, m in sorted(results.items(), key=lambda kv: rank_of.get(kv[0], 0)):
+        rows.append(f"| {lang} | {pct(m['growth_clean'])} | {pct(m['growth_views'])} | {DIRECTION[out][m['direction']]} | "
+                    f"{LEVEL[out][m['confidence']['level']]} ({m['confidence']['score']}/10) | {rank_of.get(lang, '—')} |")
+    return "\n".join(rows)
+
+
+def basket_note(items: list[dict], out: str) -> list[str]:
+    """must_mention line about what was measured (only when there is a real basket)."""
+    if len(items) <= 1:
+        return []
+    shown = ", ".join(it["label"] for it in items[:5]) + (" …" if len(items) > 5 else "")
+    return [T[out]["basket"].format(n=len(items), items=shown)]
+
+
 def must_mention(results: dict, missing: list[str], out: str) -> list[str]:
     t = T[out]
     msgs = []

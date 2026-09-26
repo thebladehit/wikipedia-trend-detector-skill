@@ -89,7 +89,7 @@ Details and every threshold: [references/METHODOLOGY.md](references/METHODOLOGY.
 | What | How |
 |---|---|
 | API behaviour | real requests, saved as fixtures ([API_NOTES](references/API_NOTES.md)) |
-| Statistics | 28 tests (synthetic series with a known answer, guard, topic resolution on saved real responses); binomial test == scipy for n ≤ 24; threshold calibration: false "rising" ≈ 2% |
+| Statistics | 36 tests (synthetic series with a known answer, guard, topic resolution on saved real responses, HTTP retries); binomial test == scipy for n ≤ 24; threshold calibration: false "rising" ≈ 2% |
 | Data pipeline | our sums == API monthly endpoint for 3 articles in uk/cs/de (de differs exactly by the added redirects); cold cache 6 langs × 36 months: 125 requests, 26 s, no 429 |
 | PDF | rendered and inspected (Cyrillic, 1 and 5 languages, long title) |
 | Agent behaviour | `evals/run_evals.py`: Claude Code + Haiku 4.5, 10 cases incl. multi-turn follow-ups, 4 iterations; final 28/30, then 10/10 after `final_message` (~$0.05 and ~30 s per case); every failure read by hand ([RESULTS](evals/RESULTS.md)) |

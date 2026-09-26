@@ -58,39 +58,56 @@ def _ok(v: float, allowed: set[float], pct: bool) -> bool:
 
 
 def check(summary: str, compact: dict) -> dict:
-    problems, warns = [], []
-    allowed = allowed_numbers(compact)
+    """{"status": "ok"|"rejected", "problems": [...blocking], "warnings": [...]}"""
+    problems = _unknown_numbers(summary, allowed_numbers(compact))
+    warnings: list[str] = []
+    for sentence in re.split(r"(?<=[.!?;])\s+|\n", summary):
+        low = sentence.casefold()
+        problems += _forbidden_claims(low)
+        warnings += [why for pat, why in WARN_WORDS if re.search(pat, low)]
+        warnings += _direction_warnings(sentence, low, compact.get("_directions", {}))
+    res = {"status": "rejected" if problems else "ok", "problems": problems, "warnings": sorted(set(warnings))}
+    if problems:
+        res["allowed_numbers_hint"] = _key_numbers(compact)
+    return res
+
+
+def _unknown_numbers(summary: str, allowed: set[float]) -> list[str]:
+    problems = []
     for s, v, pct in _nums(summary):
         if 1990 <= v <= 2100 and not pct:
             continue  # years
         if not _ok(v, allowed, pct):
             problems.append(f"number {s} is not in the analysis — use only numbers from verdicts/table")
-    sentences = re.split(r"(?<=[.!?;])\s+|\n", summary)
-    for sent in sentences:
-        low = sent.casefold()
-        for pat, why in BLOCK:
-            m = re.search(pat, low)
-            if m and not NEGATION.search(low[max(0, m.start() - 25):m.start()]):
-                problems.append(f"'{m.group(0)}': {why}")
-        for pat, why in WARN_WORDS:
-            if re.search(pat, low):
-                warns.append(why)
-        results = compact.get("_directions", {})
-        for lang, direction in results.items():
-            if not re.search(rf"(?<![a-z]){lang}(?![a-z])", low):
-                continue
-            says_up, says_down, says_flat = (bool(re.search(p, low)) for p in (UP, DOWN, FLAT))
-            if direction in ("flat", "declining", "unclear") and says_up and not says_down and not NEGATION.search(low):
-                warns.append(f"'{sent.strip()[:80]}' sounds like growth, but {lang} verdict is {direction}")
-            if direction in ("rising", "flat", "unclear") and says_down and not says_up and not NEGATION.search(low):
-                warns.append(f"'{sent.strip()[:80]}' sounds like decline, but {lang} verdict is {direction}")
-            if direction == "rising" and says_flat and not says_up:
-                warns.append(f"'{sent.strip()[:80]}' sounds flat, but {lang} verdict is rising")
-    status = "rejected" if problems else "ok"
-    res = {"status": status, "problems": problems, "warnings": sorted(set(warns))}
-    if problems:
-        res["allowed_numbers_hint"] = _key_numbers(compact)
-    return res
+    return problems
+
+
+def _forbidden_claims(low: str) -> list[str]:
+    """Claims pageviews cannot support, unless negated just before ("не готові платити")."""
+    problems = []
+    for pat, why in BLOCK:
+        m = re.search(pat, low)
+        if m and not NEGATION.search(low[max(0, m.start() - 25):m.start()]):
+            problems.append(f"'{m.group(0)}': {why}")
+    return problems
+
+
+def _direction_warnings(sentence: str, low: str, directions: dict[str, str]) -> list[str]:
+    """A sentence mentioning a language code should not contradict its verdict."""
+    warnings = []
+    quote = sentence.strip()[:80]
+    for lang, direction in directions.items():
+        if not re.search(rf"(?<![a-z]){lang}(?![a-z])", low):
+            continue
+        says_up, says_down, says_flat = (bool(re.search(p, low)) for p in (UP, DOWN, FLAT))
+        negated = bool(NEGATION.search(low))
+        if direction in ("flat", "declining", "unclear") and says_up and not says_down and not negated:
+            warnings.append(f"'{quote}' sounds like growth, but {lang} verdict is {direction}")
+        if direction in ("rising", "flat", "unclear") and says_down and not says_up and not negated:
+            warnings.append(f"'{quote}' sounds like decline, but {lang} verdict is {direction}")
+        if direction == "rising" and says_flat and not says_up:
+            warnings.append(f"'{quote}' sounds flat, but {lang} verdict is rising")
+    return warnings
 
 
 def _key_numbers(compact: dict) -> dict:

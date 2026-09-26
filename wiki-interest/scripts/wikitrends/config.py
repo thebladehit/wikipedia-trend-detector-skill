@@ -13,6 +13,9 @@ TOOL_VERSION = "0.1.0"
 
 SKILL_DIR = pathlib.Path(__file__).resolve().parents[2]
 
+# how the agent calls this tool; used in every ready-made follow-up command
+WIT = f'uv run "{SKILL_DIR}/scripts/wit.py"'
+
 
 def home() -> pathlib.Path:
     """Where cache and studies live. Outside the skill dir on purpose:

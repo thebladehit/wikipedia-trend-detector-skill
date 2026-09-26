@@ -40,58 +40,64 @@ def _level(score: int) -> str:
 
 
 def assess(m: dict) -> dict:
-    """m: metrics of one language (see analyze.py). Returns codes; render() makes text."""
-    score = RULES["conf_start"]
-    cap = "high"
-    reasons: list[tuple[str, dict]] = []
-    caps: list[tuple[str, dict]] = []
+    """m: metrics of one language (see analyze.py). Returns codes; render() makes text.
 
-    def set_cap(level: str, code: str, **kw):
-        nonlocal cap
-        if LEVELS.index(level) < LEVELS.index(cap):
-            cap = level
-        caps.append((code, kw))
-
-    vol = m["median_monthly_views"]
-    if vol < RULES["vol_low_cap"]:
-        set_cap("low", "vol_low", v=f"{vol:.0f}", t=RULES["vol_low_cap"])
-    elif vol < RULES["vol_medium_cap"]:
-        set_cap("medium", "vol_medium", v=f"{vol:.0f}", t=RULES["vol_medium_cap"])
-    if m["history_months"] < RULES["history_min_months"]:
-        set_cap("low", "history", h=m["history_months"], t=RULES["history_min_months"])
-    if m.get("proxy"):
-        set_cap("medium", "proxy")
-
-    if m["p"] is None or m["p"] >= RULES["binom_alpha"]:
-        score -= RULES["pen_not_significant"]
-        reasons.append(("not_consistent", {"k": m["k"], "n": m["n"]}) if m.get("k") is not None else ("no_yoy", {}))
-    if m["spike_share"] > RULES["spike_driven_share"]:
-        score -= RULES["pen_spike_driven"]
-        reasons.append(("spikes", {"s": f"{m['spike_share']:.0%}"}))
-    if m.get("divergence"):
-        score -= RULES["pen_divergence"]
-        reasons.append(("divergence", {}))
-    if m.get("agreement") is not None and m["n_articles"] > 2 and m["agreement"] < RULES["low_breadth"]:
-        score -= RULES["pen_low_breadth"]
-        reasons.append(("breadth", {"b": f"{m['agreement']:.0%}"}))
-    if m.get("bot_suspect"):
-        score -= RULES["pen_bot"]
-        reasons.append(("bot", {}))
-    if m.get("late_start"):
-        score -= RULES["pen_late_start"]
-        reasons.append(("late", {}))
-
-    score = max(0, score)
+    The level comes from the score, but can never exceed the lowest cap."""
+    cap, caps = _caps(m)
+    score, reasons = _penalties(m)
     level = _level(score)
-    capped = LEVELS.index(cap) < LEVELS.index(level)
-    if capped:
-        level = cap
+    if LEVELS.index(cap) < LEVELS.index(level):
+        level = cap  # capped: the caps explain the level
     else:
-        reasons += caps
-        caps = []
+        reasons, caps = reasons + caps, []  # not binding: caps are just more reasons
     if not reasons and not caps:
         reasons.append(("ok", {}))
     return {"level": level, "score": score, "_caps": caps, "_reasons": reasons}
+
+
+def _caps(m: dict) -> tuple[str, list[tuple[str, dict]]]:
+    """Upper limits of the level: too little data, short history, proxy article.
+    Returns (lowest cap, [(reason code, params)])."""
+    caps: list[tuple[str, str, dict]] = []
+    vol = m["median_monthly_views"]
+    if vol < RULES["vol_low_cap"]:
+        caps.append(("low", "vol_low", {"v": f"{vol:.0f}", "t": RULES["vol_low_cap"]}))
+    elif vol < RULES["vol_medium_cap"]:
+        caps.append(("medium", "vol_medium", {"v": f"{vol:.0f}", "t": RULES["vol_medium_cap"]}))
+    if m["history_months"] < RULES["history_min_months"]:
+        caps.append(("low", "history", {"h": m["history_months"], "t": RULES["history_min_months"]}))
+    if m.get("proxy"):
+        caps.append(("medium", "proxy", {}))
+    lowest = min((level for level, _, _ in caps), key=LEVELS.index, default="high")
+    return lowest, [(code, kw) for _, code, kw in caps]
+
+
+def _penalties(m: dict) -> tuple[int, list[tuple[str, dict]]]:
+    """Start at conf_start and subtract a penalty per problem. Returns (score, reasons)."""
+    score = RULES["conf_start"]
+    reasons: list[tuple[str, dict]] = []
+
+    def penalise(rule: str, code: str, **kw):
+        nonlocal score
+        score -= RULES[rule]
+        reasons.append((code, kw))
+
+    if m["p"] is None or m["p"] >= RULES["binom_alpha"]:
+        if m.get("k") is not None:
+            penalise("pen_not_significant", "not_consistent", k=m["k"], n=m["n"])
+        else:
+            penalise("pen_not_significant", "no_yoy")
+    if m["spike_share"] > RULES["spike_driven_share"]:
+        penalise("pen_spike_driven", "spikes", s=f"{m['spike_share']:.0%}")
+    if m.get("divergence"):
+        penalise("pen_divergence", "divergence")
+    if m.get("agreement") is not None and m["n_articles"] > 2 and m["agreement"] < RULES["low_breadth"]:
+        penalise("pen_low_breadth", "breadth", b=f"{m['agreement']:.0%}")
+    if m.get("bot_suspect"):
+        penalise("pen_bot", "bot")
+    if m.get("late_start"):
+        penalise("pen_late_start", "late")
+    return max(0, score), reasons
 
 
 def render(c: dict, out: str) -> dict:

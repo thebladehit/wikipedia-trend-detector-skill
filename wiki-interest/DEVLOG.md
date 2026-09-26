@@ -173,3 +173,20 @@ freely after the report.
 - `topic_not_found` → hint to retry with the English name.
 - New eval cases `no-languages-ask` and `polish-user`: 11/12 overall; the one
   fail is a model typo ("Dovira" in Latin letters), content was correct.
+
+### Readability refactor (no functional change)
+Long functions split into named steps: `pipeline.run` (8 numbered steps +
+helpers), `basket.build` (candidates → validation → coverage → ordering →
+hubs; meta returned instead of a fake `_basket_meta` warning), `analyze_language`
+(per-article processing, agreement, deseasonalising, stability, bot signal),
+`report._build` (one function per PDF section), `cli` (edit/report helpers,
+doctor checks), `guard.check`, `resolve`, `confidence.assess` (caps vs
+penalties), `http.get_json` (cache / retries / single request), `charts.plot`.
+How "no functional change" was verified:
+- golden snapshot of 14 CLI scenarios (stdout JSON, full analysis.json,
+  extracted PDF text) taken before the refactor: 14/14 identical after every step
+  (it caught one regression immediately: `cli resolve` still unpacked 2 values);
+- old vs new `http.get_json` on 11 failure scenarios (5xx, 429, 404, network):
+  identical results, errors and sleeps; new `tests/test_http.py`;
+- old vs new `confidence.assess` on 20 000 random metric sets: 0 differences;
+- unit tests 36/36, skill validator, 2 Haiku eval cases pass.

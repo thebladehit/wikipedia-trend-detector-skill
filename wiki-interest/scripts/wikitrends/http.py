@@ -48,39 +48,48 @@ def get_json(url: str, params: dict | None = None, *, allow_404: bool = False, t
             with _lock:
                 STATS["cache_hits"] += 1
             return json.loads(hit)
+    body = _download(url, allow_404)
+    if body is None:
+        return None
+    if ttl_days:
+        cache.api_put(url, body, ttl_days)
+    return json.loads(body)
+
+
+def _download(url: str, allow_404: bool) -> str | None:
+    """Body of the response, retrying 429 (after Retry-After), 5xx and network
+    errors with exponential backoff. None for an allowed 404."""
     delay = 1.0
     for attempt in range(MAX_RETRIES + 1):
-        _throttle()
-        req = urllib.request.Request(url, headers={"User-Agent": user_agent(), "Accept": "application/json"})
-        with _lock:
-            STATS["requests_made"] += 1
+        last_try = attempt == MAX_RETRIES
         try:
-            with urllib.request.urlopen(req, timeout=30) as r:
-                body = r.read().decode("utf-8")
-            if ttl_days:
-                cache.api_put(url, body, ttl_days)
-            return json.loads(body)
+            return _request(url)
         except urllib.error.HTTPError as e:
             if e.code == 404 and allow_404:
                 return None
             if e.code == 429:
-                ra = e.headers.get("Retry-After")
-                wait = float(ra) if ra and ra.isdigit() else delay * 2
-                if attempt < MAX_RETRIES and wait <= 60:
-                    time.sleep(wait)
-                    delay *= 2
-                    continue
-                raise WitError("rate_limited", f"Wikimedia rate limit (429) for {url}",
-                               "Wait a minute and repeat the same command: data already fetched is cached.")
-            if 500 <= e.code < 600 and attempt < MAX_RETRIES:
+                retry_after = e.headers.get("Retry-After")
+                wait = float(retry_after) if retry_after and retry_after.isdigit() else delay * 2
+                if last_try or wait > 60:
+                    raise WitError("rate_limited", f"Wikimedia rate limit (429) for {url}",
+                                   "Wait a minute and repeat the same command: data already fetched is cached.")
+                time.sleep(wait)
+            elif 500 <= e.code < 600 and not last_try:
                 time.sleep(delay)
-                delay *= 2
-                continue
-            raise WitError("http_error", f"HTTP {e.code} for {url}", "Check the title/language code; run `doctor` if it persists.")
+            else:
+                raise WitError("http_error", f"HTTP {e.code} for {url}", "Check the title/language code; run `doctor` if it persists.")
         except (urllib.error.URLError, TimeoutError, ConnectionError) as e:
-            if attempt < MAX_RETRIES:
-                time.sleep(delay)
-                delay *= 2
-                continue
-            raise WitError("network_error", f"Network error: {e}", "Check internet access; run `doctor`. Cached data is kept.")
+            if last_try:
+                raise WitError("network_error", f"Network error: {e}", "Check internet access; run `doctor`. Cached data is kept.")
+            time.sleep(delay)
+        delay *= 2
     raise WitError("http_error", f"Failed: {url}", "")
+
+
+def _request(url: str) -> str:
+    _throttle()
+    req = urllib.request.Request(url, headers={"User-Agent": user_agent(), "Accept": "application/json"})
+    with _lock:
+        STATS["requests_made"] += 1
+    with urllib.request.urlopen(req, timeout=30) as r:
+        return r.read().decode("utf-8")

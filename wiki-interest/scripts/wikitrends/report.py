@@ -101,109 +101,152 @@ def final_message(compact: dict, summary: str, pdf_path: str, out: str) -> str:
     return "\n".join(lines)
 
 
+class _Page:
+    """One A4 page; `scale` shrinks every font/line height when content overflows."""
+
+    def __init__(self, scale: float):
+        self.scale = scale
+        self.pdf = FPDF(format="A4")
+        self.pdf.set_auto_page_break(auto=True, margin=10)
+        self.pdf.set_margins(12, 10, 12)
+        self.pdf.add_font("DV", "", str(REG))
+        self.pdf.add_font("DV", "B", str(BOLD))
+        self.pdf.add_page()
+        self.width = self.pdf.w - 24
+
+    def fs(self, size: float) -> float:
+        return size * self.scale
+
+    def font(self, size: float, bold: bool = False) -> None:
+        self.pdf.set_font("DV", "B" if bold else "", self.fs(size))
+
+    def heading(self, text: str, size: float, height: float) -> None:
+        self.font(size, bold=True)
+        self.pdf.cell(self.width, self.fs(height), _Safe.txt(text), new_x="LMARGIN", new_y="NEXT")
+
+    def paragraph(self, text: str, height: float, **kw) -> None:
+        self.pdf.multi_cell(self.width, self.fs(height), _Safe.txt(text), new_x="LMARGIN", new_y="NEXT", **kw)
+
+
 def _build(compact: dict, analysis: dict, summary: str, title: str, out: str, scale: float, drop_assumptions: bool) -> FPDF:
+    page = _Page(scale)
     t = L[out]
-    S = _Safe.txt
-    pdf = FPDF(format="A4")
-    pdf.set_auto_page_break(auto=True, margin=10)
-    pdf.set_margins(12, 10, 12)
-    pdf.add_font("DV", "", str(REG))
-    pdf.add_font("DV", "B", str(BOLD))
-    pdf.add_page()
-    W = pdf.w - 24
-    fs = lambda x: x * scale  # noqa: E731
+    _title(page, compact, title)
+    _summary_box(page, t, summary)
+    _chart(page, compact)
+    _languages_table(page, t, compact, analysis, out)
+    _readers_line(page, compact)
+    page.pdf.ln(1.5)
+    _basket(page, t, compact)
+    _notes(page, t, compact, drop_assumptions)
+    _footer(page, t, compact)
+    return page.pdf
 
-    pdf.set_font("DV", "B", fs(13))
-    pdf.multi_cell(W, fs(6), S(title), new_x="LMARGIN", new_y="NEXT")
-    pdf.set_font("DV", "", fs(7.5))
-    pdf.set_text_color(90)
-    per = compact["period"]
-    pdf.multi_cell(W, fs(4), S(f"{compact['topic']['label']} ({compact['topic']['qid']}) — {compact['topic']['description']}. "
-                                f"{per['from']} … {per['to']}"), new_x="LMARGIN", new_y="NEXT")
-    pdf.set_text_color(0)
-    pdf.ln(1.5)
 
-    # summary box
-    pdf.set_fill_color(240, 245, 255)
-    pdf.set_draw_color(42, 111, 219)
-    pdf.set_font("DV", "B", fs(9))
-    pdf.cell(W, fs(5.5), S(t["summary"]), border="LTR", fill=True, new_x="LMARGIN", new_y="NEXT")
-    pdf.set_font("DV", "", fs(8.5))
-    pdf.multi_cell(W, fs(4.4), S(summary), border="LBR", fill=True, new_x="LMARGIN", new_y="NEXT", padding=(0, 2, 1.5, 2),
-                   align="L")
-    pdf.ln(2)
+def _title(page: _Page, compact: dict, title: str) -> None:
+    page.font(13, bold=True)
+    page.paragraph(title, 6)
+    page.font(7.5)
+    page.pdf.set_text_color(90)
+    topic, period = compact["topic"], compact["period"]
+    page.paragraph(f"{topic['label']} ({topic['qid']}) — {topic['description']}. {period['from']} … {period['to']}", 4)
+    page.pdf.set_text_color(0)
+    page.pdf.ln(1.5)
 
-    # chart
+
+def _summary_box(page: _Page, t: dict, summary: str) -> None:
+    page.pdf.set_fill_color(240, 245, 255)
+    page.pdf.set_draw_color(42, 111, 219)
+    page.font(9, bold=True)
+    page.pdf.cell(page.width, page.fs(5.5), _Safe.txt(t["summary"]), border="LTR", fill=True, new_x="LMARGIN", new_y="NEXT")
+    page.font(8.5)
+    page.paragraph(summary, 4.4, border="LBR", fill=True, padding=(0, 2, 1.5, 2), align="L")
+    page.pdf.ln(2)
+
+
+def _chart(page: _Page, compact: dict) -> None:
     chart = pathlib.Path(compact["files"]["chart"])
-    if chart.exists():
-        h = W * 3.3 / 8.2 * min(1.0, scale + 0.05)
-        pdf.image(str(chart), x=12 + (W - h * 8.2 / 3.3) / 2, w=h * 8.2 / 3.3, h=h)
-        pdf.ln(1)
+    if not chart.exists():
+        return
+    h = page.width * 3.3 / 8.2 * min(1.0, page.scale + 0.05)
+    w = h * 8.2 / 3.3  # keep the chart's aspect ratio
+    page.pdf.image(str(chart), x=12 + (page.width - w) / 2, w=w, h=h)
+    page.pdf.ln(1)
 
-    # table
-    pdf.set_font("DV", "B", fs(9))
-    pdf.cell(W, fs(5), S(t["table"]), new_x="LMARGIN", new_y="NEXT")
-    cols = [t["lang"], t["share"], t["views"], t["dir"], t["conf"], t["season"], t["rank"]]
-    widths = [0.09, 0.15, 0.11, 0.16, 0.2, 0.2, 0.09]
-    pdf.set_font("DV", "B", fs(7.5))
+
+TABLE_WIDTHS = [0.09, 0.15, 0.11, 0.16, 0.2, 0.2, 0.09]
+
+
+def _languages_table(page: _Page, t: dict, compact: dict, analysis: dict, out: str) -> None:
+    pdf, w = page.pdf, page.width
+    page.heading(t["table"], 9, 5)
+    page.font(7.5, bold=True)
     pdf.set_fill_color(235)
-    for c, w in zip(cols, widths):
-        pdf.cell(W * w, fs(5), S(c), border=1, fill=True)
+    for col, share in zip([t["lang"], t["share"], t["views"], t["dir"], t["conf"], t["season"], t["rank"]], TABLE_WIDTHS):
+        pdf.cell(w * share, page.fs(5), _Safe.txt(col), border=1, fill=True)
     pdf.ln()
-    pdf.set_font("DV", "", fs(7.5))
+    page.font(7.5)
     rank_of = {r["lang"]: r["rank"] for r in compact.get("ranking", [])}
-    res = analysis["results"]
-    for lang in sorted(res, key=lambda l: rank_of.get(l, 0)):
-        m = res[lang]
-        peaks = (V.month_list((m.get("season") or {}).get("peaks", []), out)
-                 if m["median_monthly_views"] >= RULES["vol_medium_cap"] else "") or "—"
-        row = [lang, V.pct(m["growth_clean"]), V.pct(m["growth_views"]), V.DIRECTION[out][m["direction"]],
-               f"{V.LEVEL[out][m['confidence']['level']]} ({m['confidence']['score']}/10)", peaks, str(rank_of.get(lang, "—"))]
-        for c, w in zip(row, widths):
-            pdf.cell(W * w, fs(4.6), S(c)[:40], border=1)
+    results = analysis["results"]
+    for lang in sorted(results, key=lambda l: rank_of.get(l, 0)):
+        for cell, share in zip(_table_row(lang, results[lang], rank_of, out), TABLE_WIDTHS):
+            pdf.cell(w * share, page.fs(4.6), _Safe.txt(cell)[:40], border=1)
         pdf.ln()
     for lang in compact.get("missing_languages", []):
-        pdf.cell(W * widths[0], fs(4.6), S(lang), border=1)
-        pdf.cell(W * (1 - widths[0]), fs(4.6), S(V.T[out]["missing"].format(lang=lang)), border=1)
+        pdf.cell(w * TABLE_WIDTHS[0], page.fs(4.6), _Safe.txt(lang), border=1)
+        pdf.cell(w * (1 - TABLE_WIDTHS[0]), page.fs(4.6), _Safe.txt(V.T[out]["missing"].format(lang=lang)), border=1)
         pdf.ln()
-    rd = compact.get("readers", {})
-    if rd.get("top_countries"):
-        pdf.set_font("DV", "", fs(6.8))
-        pdf.set_text_color(80)
-        line = rd["note"] + f" {rd['month']}: " + "; ".join(f"{l} — {v}" for l, v in rd["top_countries"].items())
-        pdf.multi_cell(W, fs(3.4), S(line), new_x="LMARGIN", new_y="NEXT", align="L")
-        pdf.set_text_color(0)
-    pdf.ln(1.5)
 
-    # basket
-    b = compact["basket"]
-    pdf.set_font("DV", "B", fs(8))
-    pdf.cell(W, fs(4.5), S(t["basket"]), new_x="LMARGIN", new_y="NEXT")
-    pdf.set_font("DV", "", fs(7.5))
-    txt = ", ".join(b["shown"]) + (f" + {t['more'].format(n=b['more'])}" if b["more"] else "")
-    pdf.multi_cell(W, fs(3.8), S(txt), new_x="LMARGIN", new_y="NEXT")
-    pdf.ln(1)
 
-    # notes: must_mention + assumptions + limitations
-    pdf.set_font("DV", "B", fs(8))
-    pdf.cell(W, fs(4.5), S(t["notes"]), new_x="LMARGIN", new_y="NEXT")
-    pdf.set_font("DV", "", fs(6.8))
+def _table_row(lang: str, m: dict, rank_of: dict, out: str) -> list[str]:
+    # with little data "seasonality" is noise — not shown (same rule as verdicts)
+    enough = m["median_monthly_views"] >= RULES["vol_medium_cap"]
+    peaks = (V.month_list((m.get("season") or {}).get("peaks", []), out) if enough else "") or "—"
+    confidence = f"{V.LEVEL[out][m['confidence']['level']]} ({m['confidence']['score']}/10)"
+    return [lang, V.pct(m["growth_clean"]), V.pct(m["growth_views"]), V.DIRECTION[out][m["direction"]],
+            confidence, peaks, str(rank_of.get(lang, "—"))]
+
+
+def _readers_line(page: _Page, compact: dict) -> None:
+    readers = compact.get("readers", {})
+    if not readers.get("top_countries"):
+        return
+    page.font(6.8)
+    page.pdf.set_text_color(80)
+    countries = "; ".join(f"{l} — {v}" for l, v in readers["top_countries"].items())
+    page.paragraph(readers["note"] + f" {readers['month']}: " + countries, 3.4, align="L")
+    page.pdf.set_text_color(0)
+
+
+def _basket(page: _Page, t: dict, compact: dict) -> None:
+    basket = compact["basket"]
+    page.heading(t["basket"], 8, 4.5)
+    page.font(7.5)
+    more = f" + {t['more'].format(n=basket['more'])}" if basket["more"] else ""
+    page.paragraph(", ".join(basket["shown"]) + more, 3.8)
+    page.pdf.ln(1)
+
+
+def _notes(page: _Page, t: dict, compact: dict, drop_assumptions: bool) -> None:
+    """must_mention + assumptions (dropped first when space is short) + limitations."""
+    page.heading(t["notes"], 8, 4.5)
+    page.font(6.8)
     notes = list(compact.get("must_mention", []))
     if not drop_assumptions:
         notes += [f"{t['assump']}: " + a for a in compact.get("assumptions", [])]
     notes += [f"{t['limits']}: " + " ".join(compact.get("limitations", []))]
     if _Safe.replaced:
         notes.append(t["replaced"])
-    for n in notes:
-        pdf.multi_cell(W, fs(3.3), S("• " + n), new_x="LMARGIN", new_y="NEXT", align="L")
+    for note in notes:
+        page.paragraph("• " + note, 3.3, align="L")
 
-    # footer
-    pdf.ln(1)
-    pdf.set_font("DV", "", fs(6.3))
-    pdf.set_text_color(110)
-    pdf.multi_cell(W, fs(3.2), S(t["footer"].format(v=METHODOLOGY_VERSION, s=compact["study"], ver=compact["version"],
-                                                   d=dt.date.today().isoformat())), new_x="LMARGIN", new_y="NEXT")
-    return pdf
+
+def _footer(page: _Page, t: dict, compact: dict) -> None:
+    page.pdf.ln(1)
+    page.font(6.3)
+    page.pdf.set_text_color(110)
+    page.paragraph(t["footer"].format(v=METHODOLOGY_VERSION, s=compact["study"], ver=compact["version"],
+                                      d=dt.date.today().isoformat()), 3.2)
 
 
 def make_pdf(compact: dict, analysis: dict, summary: str, title: str, out: str, path: pathlib.Path) -> dict:
