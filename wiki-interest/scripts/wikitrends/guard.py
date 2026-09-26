@@ -11,7 +11,6 @@ from __future__ import annotations
 import json
 import re
 
-from .verdicts import LANG_NAMES
 
 NUM = re.compile(r"(?<![\w.])[-+−–]?\d+(?:[.,]\d+)?(?:\s?%)?")
 
@@ -78,8 +77,7 @@ def check(summary: str, compact: dict) -> dict:
                 warns.append(why)
         results = compact.get("_directions", {})
         for lang, direction in results.items():
-            names = [re.escape(n.casefold()[:5]) for n in LANG_NAMES.get(lang, {}).values()]
-            if not re.search(rf"(?<![a-z]){lang}(?![a-z])" + "".join(f"|{n}" for n in names), low):
+            if not re.search(rf"(?<![a-z]){lang}(?![a-z])", low):
                 continue
             says_up, says_down, says_flat = (bool(re.search(p, low)) for p in (UP, DOWN, FLAT))
             if direction in ("flat", "declining", "unclear") and says_up and not says_down and not NEGATION.search(low):

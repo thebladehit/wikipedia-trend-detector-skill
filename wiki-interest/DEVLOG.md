@@ -158,3 +158,18 @@ freely after the report.
 - **Claude Code (Haiku 4.5)** was the test subject; its transcripts were read
   by hand after every run. Automatic checks found 2 eval bugs of their own
   (negation, quoted path) — which is why transcripts are always read.
+
+### Language handling simplified (after review)
+- Removed `guess_lang` (guessing the topic's language by letters) and
+  `LANG_NAMES` (human names of editions). Checked by real requests that they
+  were not needed: Wikidata search matches labels in other languages
+  (`jejum intermitente` with de,fr → Q1666254; `астрономія` with pl,cs → Q333).
+  Editions are now written as `pl.wikipedia`.
+- `--out` is required: the agent passes the user's language. Texts exist in
+  uk/en; other languages get English texts + `texts_language` telling the
+  agent to translate words and keep numbers.
+- Languages to analyse must come from the user; if missing (or countries are
+  named), the agent asks and proposes an assumption instead of running.
+- `topic_not_found` → hint to retry with the English name.
+- New eval cases `no-languages-ask` and `polish-user`: 11/12 overall; the one
+  fail is a model typo ("Dovira" in Latin letters), content was correct.

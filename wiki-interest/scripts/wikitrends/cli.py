@@ -95,7 +95,7 @@ def cmd_report(a) -> dict:
     d = S.latest_dir(a.study, a.version)
     analysis = json.loads((d / "analysis.json").read_text())
     compact = analysis["compact"]
-    out = analysis["params"]["out"]
+    out = analysis["params"].get("texts", analysis["params"]["out"])
     compact["_out"] = out
     if a.summary is None or a.summary.strip().lower() == "auto":
         summary = report.auto_summary(compact)
@@ -126,11 +126,11 @@ def cmd_report(a) -> dict:
 def cmd_resolve(a) -> dict:
     from . import basket as B, resolve as RS, wiki
     langs = _split(a.langs)
-    res = RS.resolve(a.topic, langs, qid=a.qid)
+    out = (a.out or "en").lower()
+    res = RS.resolve(a.topic, langs, qid=a.qid, out=out)
     if res["status"] != "ok":
         return res
     ent = res["entity"]
-    out = a.out or RS.guess_lang(a.topic or "x")
     titles, missing = RS.titles_for(ent, langs)
     result = {"status": "ok", "topic": {"qid": ent["qid"], "label": wiki.label(ent, out),
                                         "description": wiki.description(ent, out), "how": res["how"]},
@@ -196,7 +196,8 @@ def build_parser() -> argparse.ArgumentParser:
         sp.add_argument("--basket-remove", help="comma list: QIDs, titles or labels")
         sp.add_argument("--article", action="append", help="lang:Title — use this article for a language (proxy if different item)")
         sp.add_argument("--weights", help="ranking weights, e.g. growth=0.2,size=0.3,stability=0.5")
-        sp.add_argument("--out", choices=["uk", "en"], help="language of texts and PDF (default: uk for Ukrainian topic, else en)")
+        sp.add_argument("--out", required=not edit,
+                        help="language of the user's message (uk, en, pl, ...); texts/PDF are uk or en, other languages get English texts")
 
     r = sub.add_parser("run", help="new analysis: resolve topic, build basket, fetch, analyse, chart")
     r.add_argument("--topic")
@@ -226,7 +227,7 @@ def build_parser() -> argparse.ArgumentParser:
     rs.add_argument("--qid")
     rs.add_argument("--langs", required=True)
     rs.add_argument("--basket", action="store_true", help="also show the candidate basket")
-    rs.add_argument("--out", choices=["uk", "en"])
+    rs.add_argument("--out", help="language for labels (default en)")
     rs.set_defaults(fn=cmd_resolve)
 
     ls = sub.add_parser("list", help="saved studies (no network)")

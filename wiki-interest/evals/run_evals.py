@@ -118,7 +118,8 @@ def evaluate(case: dict, digs: list[dict]) -> dict:
     checks["skill_used"] = any(d["skill_used"] for d in digs) or "wit.py" in cmds
     missing_cmd = [c for c in case.get("expect_commands", []) if c not in cmds]
     missing_arg = [a for a in case.get("expect_command_args", []) if a not in cmds]
-    checks["commands"] = not missing_cmd and not missing_arg
+    forbidden_cmd = [c for c in case.get("forbid_commands", []) if c in cmds]
+    checks["commands"] = not missing_cmd and not missing_arg and not forbidden_cmd
     miss_inc = [p for p in case.get("must_include", []) if not re.search(p, answers, re.I)]
     checks["must_include"] = not miss_inc
     neg = re.compile(r"\b(не|ні|not|no|never)\b", re.I)
@@ -132,7 +133,7 @@ def evaluate(case: dict, digs: list[dict]) -> dict:
         files_ok &= any(f in o and '"status": "ok"' in o for o in outputs)
     checks["files"] = files_ok
     return {"pass": all(checks.values()), "checks": checks,
-            "details": {"missing_commands": missing_cmd, "missing_args": missing_arg, "missing_include": miss_inc,
+            "details": {"forbidden_commands": forbidden_cmd, "missing_commands": missing_cmd, "missing_args": missing_arg, "missing_include": miss_inc,
                         "forbidden_found": hit_exc, "unsupported_numbers": bad_nums[:10]}}
 
 

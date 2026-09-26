@@ -12,18 +12,6 @@ from . import wiki
 from .config import RULES
 
 
-def guess_lang(text: str) -> str:
-    if re.search(r"[іїєґІЇЄҐ]", text):
-        return "uk"
-    if re.search(r"[а-яА-Я]", text):
-        return "uk"
-    if re.search(r"[ąęłńśźżĄĘŁŃŚŹŻ]", text):
-        return "pl"
-    if re.search(r"[ěščřžýůťďňĚŠČŘŽÝŮŤĎŇ]", text):
-        return "cs"
-    return "en"
-
-
 def _norm(s: str) -> str:
     return re.sub(r"\s+", " ", s.strip().casefold().replace("_", " "))
 
@@ -32,8 +20,10 @@ def _usable(ent: dict) -> bool:
     return bool(ent["sitelinks"]) and not (set(ent["p31"]) & wiki.NON_TOPIC_P31)
 
 
-def resolve(topic: str | None, langs: list[str], qid: str | None = None, topic_lang: str | None = None) -> dict:
-    out_lang = topic_lang or (guess_lang(topic) if topic else "en")
+def resolve(topic: str | None, langs: list[str], qid: str | None = None, out: str = "en") -> dict:
+    """Wikidata search matches labels in many languages, so the topic can be
+    written in any language; we search in every compared language + English."""
+    out_lang = out
     if qid:
         ents = wiki.entities([qid], langs + [out_lang])
         if qid not in ents:
@@ -41,14 +31,15 @@ def resolve(topic: str | None, langs: list[str], qid: str | None = None, topic_l
                     "hint": "Use `resolve --topic \"...\"` to find the right QID."}
         return {"status": "ok", "entity": ents[qid], "how": "qid given"}
 
-    search_langs = list(dict.fromkeys([out_lang] + langs[:3] + ["en"]))
+    search_langs = list(dict.fromkeys(langs + ["en"]))
     hits: dict[str, dict] = {}
     for sl in search_langs:
         for h in wiki.search_entities(topic, sl):
             hits.setdefault(h["id"], h)
     if not hits:
         return {"status": "needs_input", "reason": "topic_not_found",
-                "question": f"Nothing found in Wikidata for '{topic}'. Rephrase the topic (e.g. in English) or name a specific Wikipedia article.",
+                "question": f"Nothing found in Wikidata for '{topic}'.",
+                "hint": "Run again with the topic's English name and tell the user you did so.",
                 "options": [],
                 "next": "uv run <skill>/scripts/wit.py run --topic \"<other wording>\" --langs " + ",".join(langs)}
 

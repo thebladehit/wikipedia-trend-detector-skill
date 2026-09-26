@@ -22,6 +22,7 @@ JSON (`next`, `next_steps`) — they already contain the full path.
 3. Always convey every item of `must_mention`.
 4. `status: needs_input` → ask the user the `question` with the `options`; do not guess.
 5. Say «мовний розділ» / "language edition", never «ринок», "market" or "country".
+   Languages to analyse come from the user; if missing, ask (see `--langs`).
 6. Do not explain *why* interest changed (YouTube, AI search, school year, news…):
    the data does not show causes. Do not list "possible reasons". If the user asks
    why, say Wikipedia data cannot tell and suggest how to check.
@@ -31,7 +32,7 @@ JSON (`next`, `next_steps`) — they already contain the full path.
 
 | Situation | Command |
 |---|---|
-| New question about a topic | `uv run <skill>/scripts/wit.py run --topic "<topic>" --langs <codes> --out <uk\|en>` |
+| New question about a topic | `uv run <skill>/scripts/wit.py run --topic "<topic>" --langs <codes> --out <user language>` |
 | Tool asked to pick a meaning (`needs_input`) | ask user, then `run --qid <QID> --langs ...` |
 | Follow-up: add/remove languages, period, basket, weights | `edit --study <id> ...` (reuses cache, new version) |
 | User wants a PDF / report to share | `report --study <id> --title "<user question>" --summary "<2-4 sentences>"` |
@@ -50,12 +51,15 @@ if it is a different concept), `--out uk`.
   broaden or rephrase it ("гравітаційно-хвильова астрономія" stays as is).
   For "learning X" / "X courses" use the subject itself (e.g. `English language`)
   and tell the user the basket is shown and can be adjusted.
-- `--langs`: Wikipedia codes: uk, pl, cs, sk, en, de, fr, es, pt, tr, vi, … .
-  "Polish-language" → `pl`. Never map a country to a code on your own; if the user
-  names countries, ask which languages they mean.
+- `--langs`: must come from the user. "Polish-language Wikipedia" → `pl`.
+  **If the user named no languages, or named countries/markets instead, do not
+  run yet** — ask, and offer an assumption to confirm, e.g. «Для Бразилії
+  пропоную pt (але pt-Вікіпедію читає й Португалія). Аналізуємо pt?».
 - `--months`: default 24. "last two years" → 24, "three years" → 36, "last year" → 12.
-- `--out`: the language of the **user's message** (not of the topic):
-  Ukrainian message → `uk`, otherwise `en`.
+- `--out` (required): code of the language the **user writes in** (uk, en, pl, pt…).
+  Texts come in Ukrainian or English; for other languages the JSON says
+  `texts_language: en (translate …)` — translate the words, keep every number.
+- `topic_not_found`: run again with the topic's English name and tell the user.
 - Priorities ("stability matters more than growth") → `--weights`.
 
 ## Answer template (keep it short)

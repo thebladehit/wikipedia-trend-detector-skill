@@ -1,32 +1,10 @@
 """Ready-made sentences (uk/en) so the agent retells, not interprets.
+Other output languages get the English texts (see pipeline.texts_language).
 Every number here is also exposed in `allowed_numbers` for guard.py."""
 from __future__ import annotations
 
 from .config import RULES
 from .confidence import LEVEL_NAMES
-
-LANG_NAMES = {
-    "uk": {"uk": "українська", "en": "Ukrainian"}, "pl": {"uk": "польська", "en": "Polish"},
-    "cs": {"uk": "чеська", "en": "Czech"}, "sk": {"uk": "словацька", "en": "Slovak"},
-    "en": {"uk": "англійська", "en": "English"}, "de": {"uk": "німецька", "en": "German"},
-    "fr": {"uk": "французька", "en": "French"}, "es": {"uk": "іспанська", "en": "Spanish"},
-    "it": {"uk": "італійська", "en": "Italian"}, "pt": {"uk": "португальська", "en": "Portuguese"},
-    "ru": {"uk": "російська", "en": "Russian"}, "tr": {"uk": "турецька", "en": "Turkish"},
-    "vi": {"uk": "вʼєтнамська", "en": "Vietnamese"}, "ro": {"uk": "румунська", "en": "Romanian"},
-    "hu": {"uk": "угорська", "en": "Hungarian"}, "nl": {"uk": "нідерландська", "en": "Dutch"},
-    "sv": {"uk": "шведська", "en": "Swedish"}, "fi": {"uk": "фінська", "en": "Finnish"},
-    "ja": {"uk": "японська", "en": "Japanese"}, "zh": {"uk": "китайська", "en": "Chinese"},
-    "ko": {"uk": "корейська", "en": "Korean"}, "ar": {"uk": "арабська", "en": "Arabic"},
-    "id": {"uk": "індонезійська", "en": "Indonesian"}, "hi": {"uk": "гінді", "en": "Hindi"},
-    "bg": {"uk": "болгарська", "en": "Bulgarian"}, "hr": {"uk": "хорватська", "en": "Croatian"},
-    "lt": {"uk": "литовська", "en": "Lithuanian"}, "lv": {"uk": "латиська", "en": "Latvian"},
-    "et": {"uk": "естонська", "en": "Estonian"}, "el": {"uk": "грецька", "en": "Greek"},
-    "he": {"uk": "іврит", "en": "Hebrew"}, "fa": {"uk": "перська", "en": "Persian"},
-    "th": {"uk": "тайська", "en": "Thai"}, "ms": {"uk": "малайська", "en": "Malay"},
-    "da": {"uk": "данська", "en": "Danish"}, "no": {"uk": "норвезька", "en": "Norwegian"},
-    "sr": {"uk": "сербська", "en": "Serbian"}, "ka": {"uk": "грузинська", "en": "Georgian"},
-    "kk": {"uk": "казахська", "en": "Kazakh"}, "be": {"uk": "білоруська", "en": "Belarusian"},
-}
 
 MONTHS = {
     "uk": ["січень", "лютий", "березень", "квітень", "травень", "червень", "липень", "серпень", "вересень",
@@ -47,7 +25,6 @@ T = {
         "trough": "сезонний спад: {m} (сезонність не впливає на порівняння рік до року — порівнюються ті самі місяці)",
         "trust": "Довіра {lvl} ({score}/10): {why}.",
         "abs": "в абсолютних переглядах {v}, бо загальний трафік розділу змінився на {p}",
-        "edition": "{name} Вікіпедія",
         "proxy": "Увага: для {lang} використано статтю-замінник, яка вимірює близьке, але інше поняття.",
         "missing": "У {lang} немає статті на цю тему — інтерес там не виміряно.",
         "share_vs_abs": "У {lang} частка теми і абсолютні перегляди рухаються в різні боки: частка {g}, перегляди {v} (трафік усього розділу {p}).",
@@ -70,7 +47,6 @@ T = {
         "trough": "seasonal low: {m} (seasonality does not affect the year-over-year comparison — same months are compared)",
         "trust": "Confidence {lvl} ({score}/10): {why}.",
         "abs": "in absolute views {v}, because total traffic of the edition changed by {p}",
-        "edition": "{name} Wikipedia",
         "proxy": "Note: for {lang} a proxy article is used; it measures a related but different concept.",
         "missing": "{lang} has no article on this topic — interest there is not measured.",
         "share_vs_abs": "In {lang} share and absolute views move in opposite directions: share {g}, views {v} (whole edition traffic {p}).",
@@ -137,10 +113,6 @@ LIMITATIONS = {
 }
 
 
-def lang_name(code: str, out: str) -> str:
-    return LANG_NAMES.get(code, {}).get(out, code)
-
-
 def pct(x: float | None) -> str:
     if x is None:
         return "n/a"
@@ -153,8 +125,7 @@ def month_list(ms: list[int], out: str) -> str:
 
 
 def edition(code: str, out: str) -> str:
-    name = lang_name(code, out)
-    return f"{code} ({T[out]['edition'].format(name=name.capitalize() if out == 'en' else name)})"
+    return f"{code}.wikipedia"
 
 
 def verdict(m: dict, out: str) -> str:

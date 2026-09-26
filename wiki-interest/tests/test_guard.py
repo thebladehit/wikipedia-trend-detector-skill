@@ -27,7 +27,7 @@ def test_willingness_to_pay_rejected_unless_negated():
 
 
 def test_direction_contradiction_only_warns():
-    r = guard.check("Інтерес у турецькій Вікіпедії зростає.", COMPACT)
+    r = guard.check("Інтерес у tr зростає.", COMPACT)
     assert r["status"] == "ok" and r["warnings"]
 
 

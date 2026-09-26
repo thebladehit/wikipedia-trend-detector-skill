@@ -20,6 +20,11 @@ def _r(x, nd=3):
     return None if x is None else round(float(x), nd)
 
 
+def texts_language(user_lang: str) -> str:
+    """Ready texts exist in Ukrainian and English; any other user language gets English texts."""
+    return user_lang if user_lang in ("uk", "en") else "en"
+
+
 def default_params() -> dict:
     return {"topic": None, "qid": None, "langs": [], "months": 24, "basket": "auto", "basket_size": RULES["basket_size"],
             "basket_add": [], "basket_remove": [], "articles": {}, "weights": None, "out": None, "end": None}
@@ -30,12 +35,15 @@ def run(params: dict, study_id: str | None = None) -> dict:
     langs = [l.strip().lower() for l in p["langs"] if l.strip()]
     if not langs:
         raise WitError("bad_args", "No languages given", "Pass --langs uk,pl (Wikipedia language codes).")
-    out = p["out"] or ("uk" if (p["topic"] and RS.guess_lang(p["topic"]) == "uk") else "en")
-    p["out"] = out
+    if not p["out"]:
+        raise WitError("bad_args", "No --out given", "Pass --out <code of the user's language>, e.g. --out uk.")
+    p["out"] = p["out"].strip().lower()
+    out = texts_language(p["out"])
+    p["texts"] = out
     weights = R.parse_weights(p["weights"])
 
     # 1. topic -> Wikidata item
-    res = RS.resolve(p["topic"], langs, qid=p["qid"], topic_lang=None)
+    res = RS.resolve(p["topic"], langs, qid=p["qid"], out=out)
     if res["status"] != "ok":
         return res
     ent = res["entity"]
@@ -224,6 +232,7 @@ def run(params: dict, study_id: str | None = None) -> dict:
     compact = {
         "status": "ok",
         "study": sid, "version": version,
+        "texts_language": out if out == p["out"] else f"{out} (translate words into '{p['out']}', keep every number exactly)",
         "topic": {"label": topic_label, "qid": ent["qid"], "description": wiki.description(ent, out), "how": res["how"]},
         "period": {"from": analysis_months[0], "to": analysis_months[-1], "months": len(analysis_months)},
         "verdicts": verdicts,
