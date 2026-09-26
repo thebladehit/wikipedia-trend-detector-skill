@@ -8,7 +8,7 @@
       "wit.py run"
     ],
     "must_include": [
-      "довір",
+      "довір|надійн",
       "сезон|літ|вересн|червн",
       "кошик|стат"
     ],
@@ -70,7 +70,10 @@
       "планет",
       "ртут|бог|елемент"
     ],
-    "must_not_include": []
+    "must_not_include": [],
+    "forbid_commands": [
+      "--qid"
+    ]
   },
   {
     "id": "followup-add-slovak",
@@ -215,5 +218,20 @@
     "must_not_include": [
       "rynek"
     ]
+  },
+  {
+    "id": "followup-list-previous",
+    "turns": [
+      "Чи зростає інтерес до астрономії в українській Вікіпедії?",
+      "Що ми вже рахували раніше? Нагадай результати."
+    ],
+    "expect_commands": [
+      "wit.py run",
+      "wit.py (list|show)"
+    ],
+    "must_include": [
+      "астроном"
+    ],
+    "must_not_include": []
   }
 ]

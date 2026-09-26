@@ -71,7 +71,7 @@ ASSUMPTIONS = {
         "short": "Період коротший за рік: ріст порівнює ці {n} міс. з тими самими місяцями роком раніше.",
         "basket": "Тема вимірюється кошиком з {n} пов'язаних статей (кандидати з {w}.wikipedia, метод: {m}; лише статті, що є в порівнюваних мовах).",
         "no_basket": "Тема вимірюється лише головною статтею (кошик вимкнено).",
-        "views": "Перегляди: лише люди (agent=user), усі способи доступу. До головної статті додано до {r} її редиректів.",
+        "views": "Перегляди: лише люди (agent=user), усі способи доступу. До кожної статті додано перегляди до {r} її найпопулярніших редиректів.",
         "weights": "Ваги рейтингу: ріст {g} ({gp}), розмір {s} ({sp}), стабільність {st} ({stp}) (розмір = частка теми в переглядах розділу; стабільність = низька мінливість частки по місяцях без сезонності). Бали відносні — лише між порівнюваними мовами.",
     },
     "en": {
@@ -80,7 +80,7 @@ ASSUMPTIONS = {
         "short": "Period shorter than a year: growth compares these {n} months with the same months a year earlier.",
         "basket": "Topic measured by a basket of {n} related articles (candidates from {w}.wikipedia, method: {m}; only articles existing in the compared languages).",
         "no_basket": "Topic measured by the main article only (basket off).",
-        "views": "Views: humans only (agent=user), all access methods. Up to {r} redirects of the main article are added to it.",
+        "views": "Views: humans only (agent=user), all access methods. Views of up to {r} most-used redirects are added to each article.",
         "weights": "Ranking weights: growth {g} ({gp}), size {s} ({sp}), stability {st} ({stp}) (size = topic share of the edition's views; stability = low month-to-month variation of the share, seasonality removed). Scores are relative to the compared languages.",
     },
 }

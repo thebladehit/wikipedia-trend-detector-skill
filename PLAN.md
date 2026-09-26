@@ -120,7 +120,7 @@ curl -A "$UA" "https://wikimedia.org/api/rest_v1/metrics/pageviews/top-by-countr
 - [x] `scripts/wit.py` з PEP 723 заголовком
 - [x] `uv lock --script scripts/wit.py` → `wit.py.lock` (фіксація версій)
 - [x] `pyproject.toml` лише для dev-залежностей (pytest)
-- [x] `skills-ref validate` у pre-commit
+- [x] `skills-ref validate` у pre-commit (`.pre-commit-config.yaml`: валідатор + юніт-тести)
 
 ```python
 # /// script

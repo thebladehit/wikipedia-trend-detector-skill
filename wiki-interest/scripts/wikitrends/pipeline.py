@@ -69,7 +69,7 @@ def run(params: dict, study_id: str | None = None) -> dict:
 
     # 6. daily views (+ redirects and desktop views of the main article)
     views, redirects = _fetch_views(active, items, main_titles, fetch_months)
-    assumptions.append(texts["views"].format(r=RULES["redirects_per_main"]))
+    assumptions.append(texts["views"].format(r=RULES["redirects_per_article"]))
 
     # 7. analyse each language, rank them
     results = {lang: _analyse(lang, items, views, redirects, main_titles, proxies, fetch_months, analysis_months,
@@ -233,7 +233,7 @@ def _basket(p: dict, ent: dict, active: list[str], project: dict, proxies: dict,
 
 def _fetch_views(active: list[str], items: list[dict], main_titles: dict, fetch_months: list[str]):
     """Download all daily series in parallel.
-    Returns ({(lang, title, kind): {date: views}}, {(lang, main title): [redirects]}),
+    Returns ({(lang, title, kind): {date: views}}, {(lang, article title): [redirects]}),
     kind = all | redirect | desktop."""
     jobs, keys = [], []
     redirects: dict[tuple[str, str], list[str]] = {}
@@ -243,15 +243,28 @@ def _fetch_views(active: list[str], items: list[dict], main_titles: dict, fetch_
         keys.append((lang, title, kind))
 
     for lang in active:
-        main = main_titles[lang]
-        redirects[(lang, main)] = wiki.redirects(lang, main)[:RULES["redirects_per_main"]]
-        for it in items:
-            if it["titles"].get(lang):
-                add(lang, it["titles"][lang], "all")
-        for title in redirects[(lang, main)]:
-            add(lang, title, "redirect")
-        add(lang, main, "desktop", "desktop")
+        titles = [it["titles"][lang] for it in items if it["titles"].get(lang)]
+        for title, top in _top_redirects(lang, titles).items():
+            redirects[(lang, title)] = top
+        for title in titles:
+            add(lang, title, "all")
+            for rd in redirects[(lang, title)]:
+                add(lang, rd, "redirect")
+        add(lang, main_titles[lang], "desktop", "desktop")
     return dict(zip(keys, PV.fetch_many(jobs))), redirects
+
+
+def _top_redirects(lang: str, titles: list[str]) -> dict[str, list[str]]:
+    """Up to `redirects_per_article` redirects per article that people actually
+    use (most views in the last 60 days, zero-view ones skipped). Pageviews
+    counts a redirect's views under the redirect title, not the article."""
+    all_redirects = {t: wiki.redirects(lang, t) for t in titles}
+    recent = wiki.recent_views(lang, [r for rds in all_redirects.values() for r in rds])
+    top = {}
+    for title, rds in all_redirects.items():
+        used = sorted((r for r in rds if recent.get(r, 0) > 0), key=lambda r: -recent[r])
+        top[title] = used[:RULES["redirects_per_article"]]
+    return top
 
 
 # ---------- 7. analysis ----------
@@ -264,10 +277,9 @@ def _analyse(lang, items, views, redirects, main_titles, proxies, fetch_months, 
         if not title:
             continue
         daily = dict(views[(lang, title, "all")])
-        if n == 0:  # redirects count as views of the main article
-            for rt in redirects.get((lang, title), []):
-                for d, v in views[(lang, rt, "redirect")].items():
-                    daily[d] = daily.get(d, 0) + v
+        for rd in redirects.get((lang, title), []):  # redirect views belong to the article
+            for d, v in views[(lang, rd, "redirect")].items():
+                daily[d] = daily.get(d, 0) + v
         articles.append({"qid": it["qid"], "label": it["label"], "title": title, "daily": daily, "main": n == 0,
                          "proxy": n == 0 and lang in proxies})
     m = analyze_language(lang, fetch_months, analysis_months, articles, project[lang],

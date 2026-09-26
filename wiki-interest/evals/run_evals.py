@@ -7,6 +7,7 @@
   uv run evals/run_evals.py                      # all cases, 1 run each
   uv run evals/run_evals.py --runs 3 --case astronomy-uk-trust
   uv run evals/run_evals.py --model claude-haiku-4-5
+  uv run evals/run_evals.py --model nvidia/nemotron-3-super-120b-a12b:free --openrouter-key-file ~/.openrouter_key
 
 Each run: fresh sandbox project with only this skill in .claude/skills,
 `claude -p` per turn (follow-up turns use --resume), stream-json transcript
@@ -116,7 +117,8 @@ def evaluate(case: dict, digs: list[dict]) -> dict:
     outputs = [o for d in digs for o in d["outputs"]]
     checks = {}
     checks["skill_used"] = any(d["skill_used"] for d in digs) or "wit.py" in cmds
-    missing_cmd = [c for c in case.get("expect_commands", []) if c not in cmds]
+    # expected commands are regexes, so alternatives work: "wit.py (list|show)"
+    missing_cmd = [c for c in case.get("expect_commands", []) if not re.search(c, cmds)]
     missing_arg = [a for a in case.get("expect_command_args", []) if a not in cmds]
     forbidden_cmd = [c for c in case.get("forbid_commands", []) if c in cmds]
     checks["commands"] = not missing_cmd and not missing_arg and not forbidden_cmd
@@ -137,6 +139,19 @@ def evaluate(case: dict, digs: list[dict]) -> dict:
                         "forbidden_found": hit_exc, "unsupported_numbers": bad_nums[:10]}}
 
 
+def _openrouter_env(key_file: str) -> dict:
+    """Clean environment for Claude Code via OpenRouter. A clean env is needed:
+    when started from another Claude Code / desktop session, inherited
+    CLAUDE_CODE_* variables make the child use the host login and ignore the
+    token (observed: 401 Missing Authentication header)."""
+    keep = {k: os.environ[k] for k in ("HOME", "PATH", "USER", "LANG", "TERM") if k in os.environ}
+    return {**keep,
+            "ANTHROPIC_BASE_URL": "https://openrouter.ai/api",
+            "ANTHROPIC_AUTH_TOKEN": pathlib.Path(key_file).expanduser().read_text().strip(),
+            "ANTHROPIC_API_KEY": "",
+            "CLAUDE_CODE_ENABLE_GATEWAY_MODEL_DISCOVERY": "1"}
+
+
 def main() -> int:
     ap = argparse.ArgumentParser()
     ap.add_argument("--model", default="claude-haiku-4-5")
@@ -144,13 +159,14 @@ def main() -> int:
     ap.add_argument("--case", action="append")
     ap.add_argument("--timeout", type=int, default=600)
     ap.add_argument("--tag", default="")
+    ap.add_argument("--openrouter-key-file", help="run the agent through OpenRouter; file contains the API key")
     a = ap.parse_args()
     cases = json.loads((HERE / "cases.json").read_text())
     if a.case:
         cases = [c for c in cases if c["id"] in a.case]
     out_dir = HERE / "runs"
     out_dir.mkdir(exist_ok=True)
-    env = dict(os.environ)
+    env = _openrouter_env(a.openrouter_key_file) if a.openrouter_key_file else dict(os.environ)
     env.setdefault("WIKI_INTEREST_HOME", str(pathlib.Path.home() / ".cache" / "wiki-interest-evals"))
     stamp = dt.datetime.now().strftime("%Y%m%d-%H%M%S")
     rows = []

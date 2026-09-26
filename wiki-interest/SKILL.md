@@ -20,7 +20,8 @@ JSON (`next`, `next_steps`) — they already contain the full path.
 2. Direction and confidence come from `verdicts` — do not reinterpret
    (flat ≠ growing, unclear ≠ growing).
 3. Always convey every item of `must_mention`.
-4. `status: needs_input` → ask the user the `question` with the `options`; do not guess.
+4. `status: needs_input` → ask the user the `question` with the `options` and stop.
+   Never pick an option yourself (e.g. "Mercury" — planet or element? — ask).
 5. Say «мовний розділ» / "language edition", never «ринок», "market" or "country".
    Languages to analyse come from the user; if missing, ask (see `--langs`).
 6. Do not explain *why* interest changed (YouTube, AI search, school year, news…):

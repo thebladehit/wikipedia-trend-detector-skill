@@ -190,3 +190,22 @@ How "no functional change" was verified:
   identical results, errors and sleeps; new `tests/test_http.py`;
 - old vs new `confidence.assess` on 20 000 random metric sets: 0 differences;
 - unit tests 36/36, skill validator, 2 Haiku eval cases pass.
+
+### Second harness: OpenRouter free model (1/3 automatic pass)
+- Setup finding: started from inside another Claude Code / desktop session,
+  the child `claude` inherits `CLAUDE_CODE_*` variables and uses the host
+  login, ignoring `ANTHROPIC_AUTH_TOKEN` → `401 Missing Authentication header`.
+  The runner's `--openrouter-key-file` starts the agent in a clean environment.
+- `qwen/qwen3.8-27b:free` was rate-limited upstream (shared free pool); used
+  `nvidia/nemotron-3-super-120b-a12b:free`.
+- The skill works on a non-Anthropic model (tool calls, correct numbers), but
+  two rule violations: ignored `needs_input` (Mercury) and dropped a
+  must_mention line. The Mercury one now happened on two different models →
+  a code-level fix (an explicit instruction inside the `needs_input` JSON) is
+  the next step.
+- Fix: every `needs_input` response now carries `agent_instruction`
+  ("STOP. Ask the user… do not choose an option yourself"), SKILL.md rule 4
+  names the Mercury example. Haiku: 2/2. Nemotron (free): a different failure —
+  it asked to re-confirm the language and assumed "planet" before calling the
+  tool. The free model's weaker instruction following is a limitation of that
+  model; the skill's code-level guard cannot help before the tool is called.

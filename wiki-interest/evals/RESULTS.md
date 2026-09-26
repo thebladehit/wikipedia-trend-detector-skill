@@ -115,3 +115,27 @@ Every failure below was read by hand — see DEVLOG.md for what each one meant a
 | followup-weights | 1/1 | 6.0 | 183k | 51 | 0.101 | — |
 | english-prompt-de-fr | 1/1 | 4.0 | 101k | 24 | 0.042 | — |
 | **total** | **10/10** | 4.7 | 129k | 34 | 0.058 | |
+
+## Second harness: Claude Code via OpenRouter, free model
+
+Model `nvidia/nemotron-3-super-120b-a12b:free` (`qwen/qwen3.8-27b:free` was
+rate-limited upstream at the time). Run with
+`uv run evals/run_evals.py --model nvidia/nemotron-3-super-120b-a12b:free --openrouter-key-file ~/.openrouter_key`.
+Free tier allows 50 requests/day, so 3 cases × 1 run; `$` in the output is
+Claude Code's Anthropic-price estimate, the real cost is $0.
+
+| case | result | agent turns | notes (read by hand) |
+|---|---|---|---|
+| fasting-pl-cs | PASS | 11 | correct numbers; says pl is not measured; mixes Polish/Czech words into Ukrainian («głównie», «převážно») |
+| astronomy-uk-trust | FAIL | 10 | correct numbers and trust sentence, but dropped the seasonality line from must_mention |
+| mercury-ambiguous | FAIL | 11 | **picked Q308 (planet) itself after `needs_input`** instead of asking — same violation as Haiku once did |
+
+Common: skill is found and used, every number is from the tool output (numbers
+check passed in 3/3); ~2.5× more agent turns than Haiku (repeated Skill calls).
+
+### After the `needs_input` fix (`agent_instruction` inside the JSON)
+
+| run | result | notes |
+|---|---|---|
+| Haiku 4.5, mercury × 2 | 2/2 PASS | asked the user, did not run `--qid` |
+| OpenRouter Nemotron, mercury × 1 | FAIL | did not call the tool at all: asked to confirm the language the user had already named, and assumed "planet" itself — never saw `needs_input` |

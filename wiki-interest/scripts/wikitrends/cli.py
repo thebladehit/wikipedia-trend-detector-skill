@@ -291,6 +291,11 @@ def main(argv: list[str] | None = None) -> int:
         if not getattr(a, "fn", None):
             raise WitError("bad_args", "No command given", f"Commands: run, edit, report, resolve, list, show, doctor. Try `{WIT} run --help`.")
         res = a.fn(a)
+        if isinstance(res, dict) and res.get("status") == "needs_input":
+            # observed on Haiku and on a free OpenRouter model: the agent picked an
+            # option itself; an instruction next to the data is followed more reliably
+            res["agent_instruction"] = ("STOP. Ask the user this question with these options and wait for the answer. "
+                                        "Do not choose an option yourself and do not run another analysis before they reply.")
         if isinstance(res, dict):
             res.setdefault("api", {"requests_made": STATS["requests_made"], "cache_hits": STATS["cache_hits"]})
         _emit(res)

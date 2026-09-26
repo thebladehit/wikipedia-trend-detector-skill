@@ -1,0 +1,16 @@
+# Checks before every commit (install once: uvx pre-commit install)
+repos:
+  - repo: local
+    hooks:
+      - id: skill-validate
+        name: validate Agent Skill format (skills-ref)
+        entry: uvx --from skills-ref agentskills validate wiki-interest
+        language: system
+        pass_filenames: false
+        files: ^wiki-interest/
+      - id: unit-tests
+        name: skill unit tests
+        entry: bash -c 'cd wiki-interest && uv run --group dev pytest -q'
+        language: system
+        pass_filenames: false
+        files: ^wiki-interest/(scripts|tests)/

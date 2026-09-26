@@ -80,5 +80,5 @@ RULES = {
     "basket_min_intersection": 5,
     "basket_min_common": 5,
     "basket_hub_ratio": 3.0,  # drop related articles with > 3x the main article's views
-    "redirects_per_main": 5,
+    "redirects_per_article": 5,  # most-viewed redirects added to every basket article
 }
